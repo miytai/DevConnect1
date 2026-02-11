@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Регистрация — DevConnect</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Cropper.js -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.2/cropper.min.css" integrity="sha512-hv2Y1vD0kK+3Z0Y0hZ5t2QdN3vZ3vG6n8Z9q9v9vZ5Z5Z5Z5Z5Z5Z5Z5Z5Z5Z5Z5Z5Z5Z5Z5Z5Z5Z5Z5Z5Z5Z5Z5" crossorigin="anonymous">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.2/cropper.min.js" integrity="sha512-5Kk5w0tZ2o0hN0nQ9p4d3X9uQ6p7qW5K8j3i3Xz1p8z4z0z0z0z0z0z0z0z0z0z0z0z0z0z0z0z0z0z0z0z0z0z0" crossorigin="anonymous"></script>
+</head>
+<body>
+
+<div class="container">
+    <div class="auth-card">
+        <div class="auth-header">
+            <div class="logo-icon"><i class="fas fa-code"></i></div>
+            <h1 class="logo-title">DevConnect</h1>
+            <p class="logo-subtitle">Создать аккаунт</p>
+        </div>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ 'success' if category=='success' else 'error' }}">{{ message }}</div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <form class="auth-form" method="POST" enctype="multipart/form-data" id="registerForm">
+            <!-- Аватар -->
+            <div class="form-group">
+                <label>Аватар (можно обрезать)</label>
+                <div class="avatar-upload">
+                    <div class="avatar-preview" id="avatarPreview">
+                        <div class="avatar-overlay">
+                            <i class="fas fa-camera"></i>
+                            <span>Выбрать фото</span>
+                        </div>
+                    </div>
+                    <input type="file" id="avatarInput" name="avatar" accept="image/*" hidden>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="username">Никнейм</label>
+                <input type="text" id="username" name="username" required placeholder="Ваш ник">
+            </div>
+
+            <div class="form-group">
+                <label for="email">Email</label>
+                <input type="email" id="email" name="email" required placeholder="email@example.com">
+            </div>
+
+            <div class="form-group">
+                <label for="description">О себе</label>
+                <textarea id="description" name="description" rows="4" placeholder="Расскажите немного о себе..."></textarea>
+            </div>
+
+            <div class="form-group">
+                <label for="skills">Навыки</label>
+                <select id="skills" name="skills" multiple class="multi-select">
+                    <option value="Python">Python</option>
+                    <option value="JavaScript">JavaScript</option>
+                    <option value="React">React</option>
+                    <option value="Node.js">Node.js</option>
+                    <!-- добавь остальные по желанию -->
+                </select>
+                <span class="hint">Зажмите Ctrl/Cmd для выбора нескольких</span>
+            </div>
+
+            <div class="form-group">
+                <label for="password">Пароль</label>
+                <input type="password" id="password" name="password" required>
+            </div>
+
+            <div class="form-group">
+                <label for="confirm_password">Подтвердите пароль</label>
+                <input type="password" id="confirm_password" name="confirm_password" required>
+            </div>
+
+            <button type="submit" class="btn-primary">Зарегистрироваться</button>
+        </form>
+
+        <div class="auth-footer">
+            Уже есть аккаунт? <a href="{{ url_for('login') }}">Войти</a>
+        </div>
+    </div>
+</div>
+
+<!-- Модалка для обрезки -->
+<div class="modal" id="cropModal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>Обрезать фото</h3>
+            <button class="close-modal" id="closeCrop">×</button>
+        </div>
+        <div class="crop-container">
+            <img id="cropImage" alt="Обрезаемое изображение">
+        </div>
+        <div class="modal-actions">
+            <button class="btn-outline" id="cancelCrop">Отмена</button>
+            <button class="btn-primary" id="confirmCrop">Применить</button>
+        </div>
+    </div>
+</div>
+
+<script>
+// Только проверка загрузки файла и превью без обрезки
+const avatarInput = document.getElementById('avatarInput');
+const avatarPreview = document.getElementById('avatarPreview');
+
+avatarPreview.addEventListener('click', () => avatarInput.click());
+
+avatarInput.addEventListener('change', function(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    console.log("Выбран файл:", file.name, file.type, file.size);
+
+    const reader = new FileReader();
+    reader.onload = function(ev) {
+        console.log("Файл успешно прочитан");
+        avatarPreview.style.backgroundImage = `url(${ev.target.result})`;
+        avatarPreview.style.backgroundSize = 'cover';
+        avatarPreview.style.backgroundPosition = 'center';
+        avatarPreview.querySelector('.avatar-overlay').style.opacity = '0';
+    };
+    reader.onerror = function() {
+        console.error("Ошибка чтения файла");
+    };
+    reader.readAsDataURL(file);
+});
+</script>
+
+</body>
+</html>

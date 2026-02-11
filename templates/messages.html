@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Сообщения — DevConnect</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+
+<div class="profile-page-container">
+
+    <!-- Боковая панель -->
+    <aside class="profile-sidebar">
+        <div class="sidebar-header">
+            <div class="nav-logo">
+                <i class="fas fa-code"></i>
+                <span>DevConnect</span>
+            </div>
+        </div>
+
+        <nav class="sidebar-nav">
+            <a href="{{ url_for('profile') }}">
+                <i class="fas fa-user-circle"></i>
+                <span>Профиль</span>
+            </a>
+            <a href="{{ url_for('articles') }}">
+                <i class="fas fa-newspaper"></i>
+                <span>Статьи</span>
+            </a>
+            <a href="{{ url_for('messages_list') }}" class="active">
+                <i class="fas fa-comments"></i>
+                <span>Сообщения</span>
+            </a>
+            <a href="{{ url_for('logout') }}" class="logout-link">
+                <i class="fas fa-sign-out-alt"></i>
+                <span>Выйти</span>
+            </a>
+        </nav>
+    </aside>
+
+    <!-- Основной контент списка чатов -->
+    <main class="profile-main">
+        <h1>Сообщения</h1>
+
+        {% if chats %}
+            <div class="chat-list">
+                {% for chat_item in chats %}
+                <a href="{{ url_for('chat', chat_id=chat_item.chat_id) }}" class="chat-item">
+                    <!-- Аватарка собеседника -->
+                    <div class="chat-avatar" 
+                         style="background-image: url('{{ chat_item.other_user.avatar if chat_item.other_user.avatar else 'https://via.placeholder.com/56/000/fff?text=' + chat_item.other_user.username[0]|upper }}')">
+                    </div>
+
+                    <div class="chat-info">
+                        <div class="chat-username">@{{ chat_item.other_user.username }}</div>
+                        <div class="chat-last-message">
+                            {{ chat_item.last_message }}
+                        </div>
+                    </div>
+
+                    <div class="chat-time">
+                        {{ chat_item.last_time.strftime('%d.%m %H:%M') }}
+                    </div>
+                </a>
+                {% endfor %}
+            </div>
+        {% else %}
+            <p class="no-data">У вас пока нет активных чатов</p>
+        {% endif %}
+    </main>
+</div>
+
+</body>
+</html>

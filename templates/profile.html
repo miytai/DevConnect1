@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>{{ user.username }} — DevConnect</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+</head>
+<body>
+
+<div class="profile-page-container">
+
+    <!-- Боковая панель -->
+<aside class="profile-sidebar">
+    <div class="sidebar-header">
+        <div class="nav-logo">
+            <i class="fas fa-code"></i>
+            <span>DevConnect</span>
+        </div>
+    </div>
+
+    <nav class="sidebar-nav">
+        <a href="{{ url_for('profile') }}" class="{% if request.path == url_for('profile') %}active{% endif %}">
+            <i class="fas fa-user-circle"></i>
+            <span>Профиль</span>
+        </a>
+        <a href="{{ url_for('articles') }}" class="{% if request.path == url_for('articles') %}active{% endif %}">
+            <i class="fas fa-newspaper"></i>
+            <span>Статьи</span>
+        </a>
+        <a href="{{ url_for('messages_list') }}" class="{% if request.path == url_for('messages_list') %}active{% endif %}">
+    <i class="fas fa-comments"></i>
+    <span>Сообщения</span>
+</a>
+        <a href="{{ url_for('logout') }}" class="logout-link">
+            <i class="fas fa-sign-out-alt"></i>
+            <span>Выйти</span>
+        </a>
+    </nav>
+</aside>
+
+    <!-- Основной контент -->
+    <main class="profile-main">
+
+        <header class="profile-header">
+            <div class="profile-avatar-wrapper">
+                <div class="profile-avatar" 
+                     style="background-image: url('{{ user.avatar if user.avatar else 'https://via.placeholder.com/240/000/fff?text=' + user.username[0]|upper }}')">
+                </div>
+            </div>
+
+            <div class="profile-info">
+                <h1 class="profile-username">{{ user.username }}</h1>
+                <p class="profile-email">{{ user.email }}</p>
+                <p class="profile-joined">На платформе с {{ user.created_at.strftime('%d.%m.%Y') if user.created_at else 'неизвестно' }}</p>
+            </div>
+        </header>
+
+        {% if not is_own_profile %}
+<div style="margin: 24px 0;">
+    <a href="{{ url_for('start_chat', username=user.username) }}" class="btn-primary">
+        <i class="fas fa-envelope"></i> Написать сообщение
+    </a>
+</div>
+{% endif %}
+
+        <!-- О себе -->
+        <section class="profile-section">
+            <h2 class="section-title">О себе</h2>
+            <div class="description-card">
+                <p class="profile-description">
+                    {{ user.description or 'Пока ничего не рассказано... Добавьте описание в настройках профиля.' }}
+                </p>
+            </div>
+        </section>
+
+        <!-- Навыки -->
+        <section class="profile-section">
+            <h2 class="section-title">Навыки</h2>
+            {% if user.skills and user.skills|length > 0 %}
+                <div class="skills-container">
+                    {% for skill in user.skills %}
+                        <span class="skill-pill">{{ skill }}</span>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <p class="no-data">Навыки не указаны</p>
+            {% endif %}
+        </section>
+
+        <!-- Форма добавления статьи -->
+        <section class="add-article-section">
+            <h2 class="section-title">Добавить статью / пост</h2>
+            <form method="POST" enctype="multipart/form-data" class="add-article-form">
+                <div class="form-group">
+                    <label for="title">Название</label>
+                    <input type="text" id="title" name="title" required placeholder="Название статьи">
+                </div>
+
+                <div class="form-group">
+                    <label for="content">Текст</label>
+                    <textarea id="content" name="content" rows="8" required placeholder="Ваш текст..."></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label for="image">Картинка (максимум 1)</label>
+                    <input type="file" id="image" name="image" accept="image/*">
+                </div>
+
+                <div class="form-group">
+                    <label for="file">Файл для скачивания (максимум 1)</label>
+                    <input type="file" id="file" name="file">
+                </div>
+
+                <button type="submit" class="btn-primary">Опубликовать</button>
+            </form>
+        </section>
+
+        <!-- Список статей -->
+        <section class="articles-section">
+            <h2 class="section-title">Ваши статьи</h2>
+            
+            {% if articles %}
+                {% for article in articles %}
+            <article class="article-card">
+    <div class="article-author">
+        <a href="{{ url_for('user_profile', username=article.author.username) }}" class="author-link">
+            @{{ article.author.username }}
+        </a>
+        <span class="article-date">{{ article.created_at.strftime('%d.%m.%Y %H:%M') }}</span>
+    </div>
+
+    <h3 class="article-title">{{ article.title }}</h3>
+
+    {% if article.image_path %}
+    <div class="article-image">
+        <img src="{{ article.image_path }}" alt="Изображение к статье">
+    </div>
+    {% endif %}
+
+    <div class="article-content">
+        <p>{{ article.content | safe | truncate(400) }}</p>
+        {% if article.content | length > 400 %}
+        <a href="#" class="read-more">Читать полностью →</a>
+        {% endif %}
+    </div>
+
+    {% if article.file_path %}
+    <div class="article-file">
+        <a href="{{ url_for('download_file', filename=article.file_path.split('/')[-1]) }}" 
+           class="file-download-btn" 
+           download="{{ article.file_name }}">
+            <i class="fas fa-download"></i> Скачать {{ article.file_name }}
+        </a>
+    </div>
+    {% endif %}
+</article>
+                {% endfor %}
+            {% else %}
+                <p class="no-data">У вас пока нет статей</p>
+            {% endif %}
+        </section>
+
+    </main>
+</div>
+
+</body>
+</html>

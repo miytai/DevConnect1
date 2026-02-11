@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DevConnect</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="container">
+        <!-- Навигация -->
+        <nav class="navbar">
+            <div class="nav-logo">
+                <i class="fas fa-code"></i>
+                <span>DevConnect</span>
+            </div>
+        </nav>
+
+        <!-- Главный контент -->
+        <main class="main-content">
+            <div class="logo-section">
+                <div class="logo-icon">
+                    <i class="fas fa-code"></i>
+                </div>
+                <h1 class="logo-title">DevConnect</h1>
+                <p class="logo-subtitle">Сообщество разработчиков</p>
+            </div>
+
+            <div class="description">
+                <p>Платформа для разработчиков, чтобы общаться, делиться проектами и находить коллаборации.</p>
+            </div>
+
+            <div class="buttons-container">
+                <a href="/login" class="btn btn-outline">
+                    <i class="fas fa-sign-in-alt"></i>
+                    <span>Войти</span>
+                </a>
+                <a href="/join" class="btn btn-solid">
+                    <i class="fas fa-user-plus"></i>
+                    <span>Присоединиться</span>
+                </a>
+            </div>
+
+            <div class="features">
+                <div class="feature-card">
+                    <i class="fas fa-comments"></i>
+                    <h3>Общение</h3>
+                    <p>Общайтесь с разработчиками со всего мира в реальном времени</p>
+                </div>
+                <div class="feature-card">
+                    <i class="fas fa-project-diagram"></i>
+                    <h3>Проекты</h3>
+                    <p>Делитесь своими работами и находите вдохновение в проектах других</p>
+                </div>
+                <div class="feature-card">
+                    <i class="fas fa-users"></i>
+                    <h3>Коллаборации</h3>
+                    <p>Находите партнеров для совместной работы над проектами</p>
+                </div>
+                <div class="feature-card">
+                    <i class="fas fa-graduation-cap"></i>
+                    <h3>Обучение</h3>
+                    <p>Получайте знания и делитесь опытом с сообществом</p>
+                </div>
+            </div>
+        </main>
+
+        <!-- Футер -->
+        <footer class="footer">
+            <p>© 2023 DevConnect. Все права защищены.</p>
+            <div class="footer-links">
+                <a href="#"><i class="fab fa-github"></i></a>
+                <a href="#"><i class="fab fa-twitter"></i></a>
+                <a href="#"><i class="fab fa-telegram"></i></a>
+            </div>
+        </footer>
+    </div>
+</body>
+</html>

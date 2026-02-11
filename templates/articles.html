@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Статьи — DevConnect</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+</head>
+<body>
+
+<div class="profile-page-container">
+
+    <!-- Та же боковая панель, но теперь активный пункт — Статьи -->
+    <aside class="profile-sidebar">
+        <div class="sidebar-header">
+            <div class="nav-logo">
+                <i class="fas fa-code"></i>
+                <span>DevConnect</span>
+            </div>
+        </div>
+
+        <nav class="sidebar-nav">
+            <a href="{{ url_for('profile') }}">
+                <i class="fas fa-user-circle"></i>
+                <span>Профиль</span>
+            </a>
+            <a href="{{ url_for('articles') }}" class="active">
+                <i class="fas fa-newspaper"></i>
+                <span>Статьи</span>
+            </a>
+                    <a href="{{ url_for('messages_list') }}" class="{% if request.path == url_for('messages_list') %}active{% endif %}">
+    <i class="fas fa-comments"></i>
+    <span>Сообщения</span>
+</a>
+            <a href="{{ url_for('logout') }}" class="logout-link">
+                <i class="fas fa-sign-out-alt"></i>
+                <span>Выйти</span>
+            </a>
+        </nav>
+    </aside>
+
+    <!-- Основной контент — список всех статей -->
+    <main class="profile-main">
+        <header class="page-header">
+            <h1 class="page-title">Все статьи</h1>
+            <p class="page-subtitle">Публикации участников DevConnect</p>
+        </header>
+
+        {% if articles %}
+            {% for article in articles %}
+            <article class="article-card">
+                <div class="article-author">
+    <a href="{{ url_for('user_profile', username=article.author.username) }}" class="author-link">
+        @{{ article.author.username }}
+    </a>
+    <span class="article-date">{{ article.created_at.strftime('%d.%m.%Y %H:%M') }}</span>
+</div>
+
+                <h3 class="article-title">{{ article.title }}</h3>
+
+                {% if article.image_path %}
+                <div class="article-image">
+                    <img src="{{ article.image_path }}" alt="Изображение к статье">
+                </div>
+                {% endif %}
+
+                <div class="article-content">
+                    <p>{{ article.content | safe | truncate(400) }}</p>
+                    {% if article.content | length > 400 %}
+                    <a href="#" class="read-more">Читать полностью →</a>
+                    {% endif %}
+                </div>
+
+                {% if article.file_path %}
+                <div class="article-file">
+                    <a href="{{ url_for('download_file', filename=article.file_path.split('/')[-1]) }}" 
+                       class="file-download-btn" 
+                       download="{{ article.file_name }}">
+                        <i class="fas fa-download"></i> Скачать файл ({{ article.file_name }})
+                    </a>
+                </div>
+                {% endif %}
+            </article>
+            {% endfor %}
+        {% else %}
+            <p class="no-data">Пока нет ни одной статьи. Будь первым!</p>
+        {% endif %}
+    </main>
+</div>
+
+</body>
+</html>

@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Редактировать профиль — DevConnect</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+
+<div class="profile-wrapper">
+
+    <aside class="sidebar">
+        <div class="sidebar-header">
+            <div class="logo">
+                <i class="fas fa-code"></i>
+                <span>DevConnect</span>
+            </div>
+        </div>
+        <nav class="sidebar-nav">
+            <a href="{{ url_for('profile') }}">
+                <i class="fas fa-user"></i> Профиль
+            </a>
+            <a href="{{ url_for('articles') }}">
+                <i class="fas fa-newspaper"></i> Статьи
+            </a>
+            <a href="{{ url_for('messages_list') }}">
+                <i class="fas fa-comments"></i> Сообщения
+            </a>
+            <a href="{{ url_for('logout') }}" class="logout">
+                <i class="fas fa-sign-out-alt"></i> Выйти
+            </a>
+        </nav>
+    </aside>
+
+    <main class="profile-main">
+        <h1 class="page-title">Редактировать профиль</h1>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }}">{{ message }}</div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <form method="POST" enctype="multipart/form-data" class="edit-form">
+            <!-- Аватар -->
+            <div class="form-group">
+                <label>Аватар</label>
+                <div class="avatar-preview-wrapper">
+                    <div class="avatar-preview" id="avatarPreview" style="background-image: url('{{ user.avatar if user.avatar else 'https://via.placeholder.com/120/000/fff?text=' + user.username[0]|upper }}')">
+                        <div class="avatar-overlay">Нажмите, чтобы выбрать</div>
+                    </div>
+                    <input type="file" id="avatar" name="avatar" accept="image/*" hidden>
+                </div>
+            </div>
+
+            <!-- Email -->
+            <div class="form-group">
+                <label for="email">Email</label>
+                <input type="email" id="email" name="email" value="{{ user.email }}" required>
+            </div>
+
+            <!-- Описание -->
+            <div class="form-group">
+                <label for="description">О себе</label>
+                <textarea id="description" name="description" rows="5">{{ user.description or '' }}</textarea>
+            </div>
+
+            <!-- Навыки -->
+            <div class="form-group">
+                <label for="skills">Навыки</label>
+                <select id="skills" name="skills" multiple class="multi-select">
+                    <option value="Python" {% if 'Python' in user.skills %}selected{% endif %}>Python</option>
+                    <option value="JavaScript" {% if 'JavaScript' in user.skills %}selected{% endif %}>JavaScript</option>
+                    <option value="React" {% if 'React' in user.skills %}selected{% endif %}>React</option>
+                    <option value="Node.js" {% if 'Node.js' in user.skills %}selected{% endif %}>Node.js</option>
+                    <option value="Django" {% if 'Django' in user.skills %}selected{% endif %}>Django</option>
+                    <option value="FastAPI" {% if 'FastAPI' in user.skills %}selected{% endif %}>FastAPI</option>
+                    <option value="Go" {% if 'Go' in user.skills %}selected{% endif %}>Go</option>
+                    <option value="Rust" {% if 'Rust' in user.skills %}selected{% endif %}>Rust</option>
+                    <option value="SQL" {% if 'SQL' in user.skills %}selected{% endif %}>SQL</option>
+                    <option value="Docker" {% if 'Docker' in user.skills %}selected{% endif %}>Docker</option>
+                    <!-- Добавь другие нужные навыки -->
+                </select>
+                <small>Зажмите Ctrl/Cmd для выбора нескольких</small>
+            </div>
+
+            <div class="form-actions">
+                <button type="submit" class="btn save-btn">Сохранить изменения</button>
+                <a href="{{ url_for('profile') }}" class="btn cancel-btn">Отмена</a>
+            </div>
+        </form>
+    </main>
+</div>
+
+<script>
+    // Превью новой аватарки
+    document.getElementById('avatar').addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = function(ev) {
+                document.getElementById('avatarPreview').style.backgroundImage = `url(${ev.target.result})`;
+            };
+            reader.readAsDataURL(file);
+        }
+    });
+</script>
+
+</body>
+</html>
