@@ -10,7 +10,7 @@ import mimetypes
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'your-very-secure-key-change-me-2025'
-app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://devconnect:321456@devconnect:5432/devconnect_db'
+app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://devconnect:321456@192.168.3.10:5432/devconnect_db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['UPLOAD_FOLDER'] = 'static/uploads'
 
