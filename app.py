@@ -1,5 +1,6 @@
-from flask import Flask, render_template, request, redirect, url_for, flash, session, send_from_directory
+from flask import Flask, render_template, request, redirect, url_for, flash, session, send_from_directory, jsonify
 from flask_sqlalchemy import SQLAlchemy
+from flask_socketio import SocketIO, emit, join_room
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
 import os
@@ -15,6 +16,7 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['UPLOAD_FOLDER'] = 'static/uploads'
 
 db = SQLAlchemy(app)
+socketio = SocketIO(app, cors_allowed_origins="*")   # для разработки можно "*", в продакшене — конкретные домены
 
 # Папки
 os.makedirs(os.path.join(app.config['UPLOAD_FOLDER'], 'avatars'), exist_ok=True)
@@ -23,7 +25,10 @@ os.makedirs(os.path.join(app.config['UPLOAD_FOLDER'], 'articles/files'), exist_o
 CHAT_UPLOAD_FOLDER = os.path.join(app.config['UPLOAD_FOLDER'], 'chat_files')
 os.makedirs(CHAT_UPLOAD_FOLDER, exist_ok=True)
 
-# Модели
+# ────────────────────────────────────────────────
+#                  Модели (без изменений)
+# ────────────────────────────────────────────────
+
 class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(80), unique=True, nullable=False)
@@ -68,9 +73,9 @@ class Message(db.Model):
     chat_id = db.Column(db.Integer, db.ForeignKey('chat.id'), nullable=False)
     sender_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     content = db.Column(db.Text)
-    file_path = db.Column(db.String(255))           # путь к файлу
-    file_name = db.Column(db.String(255))           # оригинальное имя
-    mime_type = db.Column(db.String(100))           # тип файла
+    file_path = db.Column(db.String(255))
+    file_name = db.Column(db.String(255))
+    mime_type = db.Column(db.String(100))
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
 
@@ -99,6 +104,9 @@ def render_message_content(content):
     return Markup(html)
 
 
+app.jinja_env.globals['render_message_content'] = render_message_content
+
+
 def get_or_create_chat(user1_id, user2_id):
     chat = Chat.query.filter(
         Chat.participants.any(User.id == user1_id),
@@ -117,6 +125,10 @@ def get_or_create_chat(user1_id, user2_id):
 
     return chat
 
+
+# ────────────────────────────────────────────────
+#                  Маршруты (большинство без изменений)
+# ────────────────────────────────────────────────
 
 @app.route('/')
 def home():
@@ -302,21 +314,21 @@ def chat(chat_id):
         return redirect(url_for('login'))
 
     user = db.session.get(User, session['user_id'])
-    chat = Chat.query.get_or_404(chat_id)
+    chat_obj = Chat.query.get_or_404(chat_id)
 
-    if user not in chat.participants:
+    if user not in chat_obj.participants:
         flash('Нет доступа к этому чату', 'error')
         return redirect(url_for('messages_list'))
 
-    other_user = next((p for p in chat.participants if p.id != user.id), None)
+    other_user = next((p for p in chat_obj.participants if p.id != user.id), None)
 
     messages = Message.query\
-        .filter(Message.chat_id == chat.id)\
+        .filter(Message.chat_id == chat_id)\
         .order_by(Message.created_at.asc())\
         .all()
 
     return render_template('chat.html',
-                           chat=chat,
+                           chat=chat_obj,
                            messages=messages,
                            user=user,
                            other_user=other_user,
@@ -326,23 +338,19 @@ def chat(chat_id):
 @app.route('/chat/<int:chat_id>/send', methods=['POST'])
 def send_message(chat_id):
     if 'user_id' not in session:
-        return redirect(url_for('login'))
+        return jsonify({"error": "Не авторизован"}), 401
 
     content = request.form.get('content', '').strip()
-    file_path = None
-    file_name = None
-    mime_type = None
+    file_path = file_name = mime_type = None
 
-    # Обработка файла
     if 'file' in request.files:
         file = request.files['file']
         if file and file.filename:
             file.seek(0, os.SEEK_END)
             file_size = file.tell()
             file.seek(0)
-            if file_size > 10 * 1024 * 1024:
-                flash('Файл слишком большой (макс. 10 МБ)', 'error')
-                return redirect(url_for('chat', chat_id=chat_id))
+            if file_size > MAX_FILE_SIZE:
+                return jsonify({"error": "Файл слишком большой (макс. 10 МБ)"}), 400
 
             ext = file.filename.rsplit('.', 1)[1].lower() if '.' in file.filename else ''
             if ext in ALLOWED_IMAGE or ext in ALLOWED_FILE:
@@ -353,22 +361,19 @@ def send_message(chat_id):
                 file_name = file.filename
                 mime_type = mimetypes.guess_type(path)[0] or 'application/octet-stream'
             else:
-                flash('Недопустимый тип файла', 'error')
-                return redirect(url_for('chat', chat_id=chat_id))
+                return jsonify({"error": "Недопустимый тип файла"}), 400
 
     if not content and not file_path:
-        flash('Напишите сообщение или прикрепите файл', 'error')
-        return redirect(url_for('chat', chat_id=chat_id))
+        return jsonify({"error": "Пустое сообщение и нет файла"}), 400
 
     user = db.session.get(User, session['user_id'])
-    chat = Chat.query.get_or_404(chat_id)
+    chat_obj = Chat.query.get_or_404(chat_id)
 
-    if user not in chat.participants:
-        flash('Нет доступа', 'error')
-        return redirect(url_for('messages_list'))
+    if user not in chat_obj.participants:
+        return jsonify({"error": "Нет доступа к чату"}), 403
 
     message = Message(
-        chat_id=chat.id,
+        chat_id=chat_id,
         sender_id=user.id,
         content=content,
         file_path=file_path,
@@ -378,7 +383,22 @@ def send_message(chat_id):
     db.session.add(message)
     db.session.commit()
 
-    return redirect(url_for('chat', chat_id=chat_id))
+    # Подготавливаем данные для отправки через WebSocket
+    data = {
+        'id': message.id,
+        'sender_id': message.sender_id,
+        'username': user.username,
+        'content': message.content,
+        'file_path': message.file_path,
+        'file_name': message.file_name,
+        'mime_type': message.mime_type,
+        'created_at': message.created_at.strftime('%H:%M')
+    }
+
+    # Рассылаем сообщение всем в комнате (включая отправителя)
+    emit('new_message', data, room=str(chat_id), namespace='/')
+
+    return jsonify({"status": "ok", "message_id": message.id}), 200
 
 
 @app.route('/start_chat/<string:username>')
@@ -404,5 +424,19 @@ def logout():
     return redirect(url_for('home'))
 
 
+# ────────────────────────────────────────────────
+#                  WebSocket события
+# ────────────────────────────────────────────────
+
+@socketio.on('join', namespace='/')
+def on_join(data):
+    chat_id = data.get('chat_id')
+    if chat_id:
+        join_room(str(chat_id))
+        # можно отправить уведомление, что пользователь присоединился (опционально)
+
+
+# ────────────────────────────────────────────────
 if __name__ == '__main__':
-    app.run(debug=True)
+    socketio.run(app, debug=True, host='0.0.0.0', port=5000)
+    # В production рекомендуется использовать eventlet/gevent + gunicorn/uvicorn

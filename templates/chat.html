@@ -7,11 +7,17 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
-    <!-- Highlight.js - Dracula (красивая тема как в VS Code) -->
+    <!-- Highlight.js - Dracula тема -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/dracula.min.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/python.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/javascript.min.js"></script>
+    
+    <!-- Socket.IO клиент -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.5/socket.io.js"></script>
+    
+    <!-- Marked.js для рендера markdown на клиенте -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 </head>
 <body onload="hljs.highlightAll();">
 
@@ -52,7 +58,9 @@
             </a>
             
             <div class="chat-partner-info">
-                <div class="partner-avatar" style="background-image: url('{{ other_user.avatar if other_user.avatar else 'https://via.placeholder.com/48/000/fff' }}')"></div>
+                <div class="partner-avatar" 
+                     style="background-image: url('{{ other_user.avatar if other_user.avatar else 'https://via.placeholder.com/48/000/fff' }}')">
+                </div>
                 <div class="partner-details">
                     <h2>@{{ other_user.username }}</h2>
                 </div>
@@ -63,7 +71,9 @@
             {% for msg in messages %}
             <div class="message {% if msg.sender_id == user.id %}my-message{% else %}other-message{% endif %}">
                 {% if msg.sender_id != user.id %}
-                <div class="message-avatar" style="background-image: url('{{ other_user.avatar if other_user.avatar else 'https://via.placeholder.com/40/000/fff' }}')"></div>
+                <div class="message-avatar" 
+                     style="background-image: url('{{ other_user.avatar if other_user.avatar else 'https://via.placeholder.com/40/000/fff' }}')">
+                </div>
                 {% endif %}
                 
                 <div class="message-bubble">
@@ -89,7 +99,7 @@
             {% endfor %}
         </div>
 
-        <form method="POST" action="{{ url_for('send_message', chat_id=chat.id) }}" class="chat-input-form" enctype="multipart/form-data">
+        <form id="chatForm" class="chat-input-form" enctype="multipart/form-data">
             <div class="input-wrapper">
                 <textarea name="content" placeholder="Сообщение... ```код``` или картинка" rows="1"
                           oninput="this.style.height = 'auto'; this.style.height = (this.scrollHeight) + 'px';"></textarea>
@@ -110,14 +120,99 @@
 </div>
 
 <script>
-    hljs.highlightAll();
-    
-    // Автоскролл вниз
-    const messagesDiv = document.querySelector('.chat-messages');
-    if (messagesDiv) messagesDiv.scrollTop = messagesDiv.scrollHeight;
+    // Настройка marked + highlight.js
+    marked.setOptions({
+        highlight: function(code, lang) {
+            const language = hljs.getLanguage(lang) ? lang : 'plaintext';
+            return hljs.highlight(code, { language }).value;
+        },
+        langPrefix: 'hljs language-'
+    });
 
-    // Показ имени файла
-    document.getElementById('chat-file').addEventListener('change', e => {
+    const socket = io();
+    const chatId = {{ chat.id }};
+    const currentUserId = {{ user.id }};
+    const otherAvatar = "{{ other_user.avatar if other_user.avatar else 'https://via.placeholder.com/40/000/fff' }}";
+
+    // Присоединяемся к комнате чата
+    socket.emit('join', { chat_id: chatId });
+
+    // Получаем новые сообщения в реальном времени
+    socket.on('new_message', function(data) {
+        const isMyMessage = data.sender_id === currentUserId;
+
+        let html = `
+            <div class="message ${isMyMessage ? 'my-message' : 'other-message'}">
+                ${!isMyMessage ? `<div class="message-avatar" style="background-image: url('${otherAvatar}')"></div>` : ''}
+                <div class="message-bubble">
+        `;
+
+        if (data.content) {
+            html += `<div class="message-content">${marked.parse(data.content)}</div>`;
+        }
+
+        if (data.file_path) {
+            if (data.mime_type && data.mime_type.includes('image')) {
+                html += `<div class="message-file"><img src="${data.file_path}" alt="${data.file_name}" class="chat-image"></div>`;
+            } else {
+                html += `
+                    <div class="message-file">
+                        <a href="${data.file_path}" download="${data.file_name}" class="file-download">
+                            <i class="fas fa-file-download"></i> ${data.file_name}
+                        </a>
+                    </div>
+                `;
+            }
+        }
+
+        html += `
+                    <div class="message-time">${data.created_at}</div>
+                </div>
+            </div>
+        `;
+
+        const tempDiv = document.createElement('div');
+        tempDiv.innerHTML = html;
+
+        // Подсвечиваем код, если есть
+        tempDiv.querySelectorAll('pre code').forEach(block => {
+            hljs.highlightElement(block);
+        });
+
+        document.getElementById('chatMessages').appendChild(tempDiv.firstChild);
+        document.getElementById('chatMessages').scrollTop = document.getElementById('chatMessages').scrollHeight;
+    });
+
+    // Отправка сообщения через fetch (сервер отправит через websocket всем)
+    document.getElementById('chatForm').addEventListener('submit', async function(e) {
+        e.preventDefault();
+
+        const formData = new FormData(this);
+
+        try {
+            const response = await fetch("{{ url_for('send_message', chat_id=chat.id) }}", {
+                method: 'POST',
+                body: formData
+            });
+
+            const result = await response.json();
+
+            if (response.ok) {
+                // Очищаем форму
+                this.reset();
+                document.getElementById('file-name-display').style.display = 'none';
+                const textarea = this.querySelector('textarea');
+                textarea.style.height = 'auto';
+            } else {
+                alert(result.error || 'Ошибка при отправке сообщения');
+            }
+        } catch (err) {
+            alert('Ошибка соединения: ' + err.message);
+        }
+    });
+
+    // Показываем имя прикреплённого файла
+    document.getElementById('chat-file').addEventListener('change', function(e) {
         const display = document.getElementById('file-name-display');
         if (e.target.files.length > 0) {
             display.textContent = 'Прикреплён: ' + e.target.files[0].name;
@@ -126,6 +221,10 @@
             display.style.display = 'none';
         }
     });
+
+    // Автоскролл вниз при загрузке
+    const messagesDiv = document.getElementById('chatMessages');
+    if (messagesDiv) messagesDiv.scrollTop = messagesDiv.scrollHeight;
 </script>
 
 </body>
